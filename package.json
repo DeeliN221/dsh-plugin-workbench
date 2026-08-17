@@ -6,12 +6,11 @@
   "author": "guohongbo@outlook.com",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ghbhiee/dsh-plugins.git",
-    "directory": "packages/workbench"
+    "url": "git+https://github.com/ghbhiee/dsh-plugin-workbench.git"
   },
-  "homepage": "https://github.com/ghbhiee/dsh-plugins/tree/main/packages/workbench#readme",
+  "homepage": "https://github.com/ghbhiee/dsh-plugin-workbench#readme",
   "bugs": {
-    "url": "https://github.com/ghbhiee/dsh-plugins/issues"
+    "url": "https://github.com/ghbhiee/dsh-plugin-workbench/issues"
   },
   "type": "module",
   "main": "lib/index.js",
