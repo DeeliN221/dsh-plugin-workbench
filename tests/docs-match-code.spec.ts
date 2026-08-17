@@ -12,9 +12,9 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { KNOWN_ERROR_CODES } from '../src/client/error-copy.ts'
 
-const packages = join(import.meta.dirname, '..', '..')
+const root = join(import.meta.dirname, '..')
 
-const read = (...parts: string[]): string => readFileSync(join(packages, ...parts), 'utf8')
+const read = (...parts: string[]): string => readFileSync(join(root, ...parts), 'utf8')
 
 /** Config field names a package's schema declares, in source order. */
 function schemaFields(source: string): string[] {
@@ -34,9 +34,9 @@ function servedRoutes(source: string): string[] {
 }
 
 describe('workbench', () => {
-  const readme = read('workbench', 'README.md')
-  const index = read('workbench', 'src', 'index.ts')
-  const api = read('workbench', 'src', 'api.ts')
+  const readme = read('README.md')
+  const index = read('src', 'index.ts')
+  const api = read('src', 'api.ts')
 
   it('documents every config field', () => {
     const fields = schemaFields(index)
@@ -56,7 +56,7 @@ describe('workbench', () => {
     // An unworded code falls back to the host's operator-facing text, which is
     // the thing the error-copy module exists to avoid.
     const hostSources = ['api.ts', 'roots.ts', 'write-guard.ts', 'search.ts', 'index.ts']
-      .map(file => read('workbench', 'src', file)).join('\n')
+      .map(file => read('src', file)).join('\n')
     const unworded = [...new Set(thrownCodes(hostSources))]
       .filter(code => !(KNOWN_ERROR_CODES as readonly string[]).includes(code))
       // Codes a person never sees: they mean the caller is not the browser.
@@ -68,43 +68,9 @@ describe('workbench', () => {
     // Guards live in their own module, so scan the whole host half — scanning
     // one file made six real codes look invented.
     const hostSources = ['api.ts', 'roots.ts', 'write-guard.ts', 'search.ts', 'index.ts']
-      .map(file => read('workbench', 'src', file)).join('\n')
+      .map(file => read('src', file)).join('\n')
     const thrown = new Set([...thrownCodes(hostSources), 'stale_version'])
     const stale = (KNOWN_ERROR_CODES as readonly string[]).filter(code => !thrown.has(code))
     expect(stale).toEqual([])
-  })
-})
-
-describe('cli-session', () => {
-  const readme = read('cli-session', 'README.md')
-  const index = read('cli-session', 'src', 'index.ts')
-
-  it('documents every config field', () => {
-    const fields = schemaFields(index).filter(field => field !== 'request')
-    expect(fields).toContain('sessionTag')
-    const undocumented = fields.filter(field => !readme.includes(`\`${field}\``))
-    expect(undocumented).toEqual([])
-  })
-
-  it('documents every flag the startup declares', () => {
-    const startup = read('cli-session', 'src', 'startup.ts')
-    // Long-form-only flags count too: `--json-schema` has no short form and a
-    // short-plus-long pattern would have let it go undocumented.
-    const flags = [...startup.matchAll(/\.option\('(?:-\w, )?--([a-z-]+)/g)].map(match => `--${match[1] as string}`)
-    expect(flags.length).toBeGreaterThan(5)
-    const undocumented = flags.filter(flag => !readme.includes(flag))
-    expect(undocumented).toEqual([])
-  })
-})
-
-describe('mobile-shell', () => {
-  const readme = read('mobile-shell', 'README.md')
-  const index = read('mobile-shell', 'src', 'index.ts')
-
-  it('documents every config field', () => {
-    const fields = schemaFields(index)
-    expect(fields).toEqual(['narrowMaxWidth', 'documentTitle'])
-    const undocumented = fields.filter(field => !readme.includes(field))
-    expect(undocumented).toEqual([])
   })
 })

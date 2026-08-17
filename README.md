@@ -8,39 +8,29 @@ Not on npm yet. The built `lib/` is committed, so it installs straight from
 GitHub — no download, no build step:
 
 ```sh
-# From the standalone repo (recommended)
 dsh plugin --profile web add github:ghbhiee/dsh-plugin-workbench
-
-# ...or from the monorepo (the #path: fragment picks the package; a bare
-# github:ghbhiee/dsh-plugins resolves to the workspace root, not a plugin)
-dsh plugin --profile web add "github:ghbhiee/dsh-plugins#path:packages/workbench"
 ```
 
-Or from a [release](https://github.com/ghbhiee/dsh-plugins/releases) tarball, or
-a local clone:
+Or from a local clone (a `link:`, so a local rebuild is picked up):
 
 ```sh
-# From a release tarball (download it first — passing the URL to `dsh plugin
-# add` trips a pnpm integrity check)
-curl -LO https://github.com/ghbhiee/dsh-plugins/releases/download/v0.2.0/dsh-plugin-workbench-0.2.0.tgz
-dsh plugin --profile web add ./dsh-plugin-workbench-0.2.0.tgz
-
-# ...or from a clone (a `link:`, so a local rebuild is picked up)
-dsh plugin --profile web add ./packages/workbench
-
-dsh web
+git clone https://github.com/ghbhiee/dsh-plugin-workbench.git
+dsh plugin --profile web add ./dsh-plugin-workbench
 ```
 
-The other packages install the same way — `github:ghbhiee/dsh-plugin-mobile-shell`,
-`github:ghbhiee/dsh-plugin-cli-session`. Because `lib/` is versioned, it must be
-rebuilt and committed on every change or a git install serves stale code; the
-standalone repos are mirrors synced from the monorepo (`scripts/sync-standalone.sh`).
+Sibling plugins install the same way: [dsh-plugin-workbench](https://github.com/ghbhiee/dsh-plugin-workbench),
+[dsh-plugin-mobile-shell](https://github.com/ghbhiee/dsh-plugin-mobile-shell),
+[dsh-plugin-cli-session](https://github.com/ghbhiee/dsh-plugin-cli-session).
 
-There are two launchers — one at the bottom of the sidebar, and one in the **top-right of the conversation header** (in an active session), so the panel is reachable from the session itself. The surface opens **docked to the right of the active session** by default — chat and files/terminal side by side — with a **Full frame ↔ Dock right** toggle in its header and a draggable divider to resize the split (arrow keys work on it too, and the width persists).
+## Develop
 
-Full-frame, it is a labelled `dialog` that takes focus when it opens; docked, it is a `complementary` region beside a still-usable conversation, so it does not grab focus away. Escape closes it in either mode — except over the terminal, where Escape belongs to the shell (vim, less, readline all want it).
+```sh
+pnpm install
+pnpm run check   # typecheck → vitest → tsdown build
+```
 
-The file browser is two panes side by side when there is room. Below about 560px — a narrow dock — they no longer both fit, so it **drills in** instead: the list fills the pane, and opening a file overlays a full-width preview with a **Back** button that returns to the list. It measures the pane (a `ResizeObserver` on the browser, not the window), so it adapts to whatever width the dock is dragged to; `data-narrow` and `data-view` drive the switch in CSS.
+Because `lib/` is versioned (it is what a git install serves), rebuild and
+commit it with every source change.
 
 ## Configure
 
