@@ -16,6 +16,10 @@ describe('previewKind', () => {
     expect(previewKind(name)).toBe('html')
   })
 
+  it.each(['book.pdf', 'Report.PDF'])('renders %s as pdf', (name) => {
+    expect(previewKind(name)).toBe('pdf')
+  })
+
   it.each(['main.ts', 'Makefile', 'noext', '.gitignore'])('renders %s as text', (name) => {
     expect(previewKind(name)).toBe('text')
   })

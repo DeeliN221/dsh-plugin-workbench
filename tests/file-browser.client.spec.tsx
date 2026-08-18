@@ -17,7 +17,7 @@ const labels: FileBrowserLabels = {
   namePlaceholder: 'Name', dropHint: 'Drop to upload',
   searchPlaceholder: 'Search filenames', noMatches: 'No matching files.',
   searchTruncated: 'Search stopped early', brokenLink: 'broken link', replaced: 'Replaced', uploadFailed: 'Failed', staleVersion: 'Changed on disk', changedOnDisk: 'Changed on disk', reload: 'Reload',
-  htmlViewSource: 'View source', htmlViewRendered: 'View rendered', htmlEnableScripts: 'Enable scripts', htmlDisableScripts: 'Disable scripts',
+  htmlViewSource: 'View source', htmlViewRendered: 'View rendered', htmlEnableScripts: 'Enable scripts', htmlDisableScripts: 'Disable scripts', download: 'Download',
   errors: {
     destination_exists: 'Already there', protected_file: 'Protected file', protected_path: 'Protected directory',
     sandbox_read_only: 'Read-only sandbox', write_disabled: 'Writing is off', outside_writable_root: 'Not writable here',

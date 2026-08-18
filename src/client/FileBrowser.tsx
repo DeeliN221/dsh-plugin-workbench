@@ -41,6 +41,8 @@ export interface FileBrowserLabels extends FileActionLabels {
   htmlEnableScripts: string
   /** Turn the opted-in scripts back off. */
   htmlDisableScripts: string
+  /** Save the file itself; the only option for kinds nothing can render. */
+  download: string
   /** Localized copy for host error codes. */
   errors: ErrorCopy
   /** Shown when the search walk stopped at a limit rather than finishing. */
@@ -536,6 +538,7 @@ export function FileBrowser({ labels, sessionCwd, openTarget, onTargetConsumed, 
                 htmlViewRendered: labels.htmlViewRendered,
                 htmlEnableScripts: labels.htmlEnableScripts,
                 htmlDisableScripts: labels.htmlDisableScripts,
+                download: labels.download,
               }}
             />
           )}

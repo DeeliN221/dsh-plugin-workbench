@@ -20,7 +20,7 @@ const NAMED_FILES: Record<string, string> = {
 }
 
 /** How the preview pane should render a file. */
-export type PreviewKind = 'image' | 'markdown' | 'html' | 'text'
+export type PreviewKind = 'image' | 'markdown' | 'html' | 'pdf' | 'text'
 
 function extensionOf(name: string): string {
   const dot = name.lastIndexOf('.')
@@ -39,6 +39,9 @@ export function previewKind(name: string): PreviewKind {
   // SVG stays an image (rendered through <img>, which never runs its scripts);
   // only real HTML documents get the framed renderer below.
   if (ext === 'html' || ext === 'htm') return 'html'
+  // The browser's own viewer renders it, straight from the bytes route — no
+  // reading it as text (that only earns a `binary_file` refusal).
+  if (ext === 'pdf') return 'pdf'
   return 'text'
 }
 

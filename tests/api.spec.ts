@@ -175,6 +175,24 @@ describe('read routes', () => {
     expect(response.headers.get('content-type')).toBe('application/octet-stream')
   })
 
+  it('serves a download as an attachment, keeping the safety headers', async () => {
+    // The escape hatch for anything no renderer can show. Attachment is the
+    // safer disposition — an attachment is never rendered as a document, so the
+    // stored-XSS concern cannot arise — but the guards stay on regardless.
+    const response = await fetch(`${base}/plugins/workbench/api/bytes?root=workspace&path=danger.svg&download=1`)
+    expect(response.status).toBe(200)
+    const disposition = response.headers.get('content-disposition') ?? ''
+    expect(disposition).toContain('attachment')
+    expect(disposition).toContain('danger.svg')
+    expect(response.headers.get('x-content-type-options')).toBe('nosniff')
+    expect(response.headers.get('content-security-policy') ?? '').toContain('sandbox')
+  })
+
+  it('still previews inline without the download flag', async () => {
+    const response = await fetch(`${base}/plugins/workbench/api/bytes?root=workspace&path=pic.png`)
+    expect(response.headers.get('content-disposition') ?? '').toContain('inline')
+  })
+
   it('404s an unknown route', async () => {
     const { status, body } = await call('nope')
     expect(status).toBe(404)

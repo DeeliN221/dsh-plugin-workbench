@@ -102,3 +102,12 @@
      its own background; otherwise the app's base surface stands in. */
   background: var(--dsw-alias-bg-base);
 }
+
+/* The browser's built-in PDF viewer fills the pane below the bar. */
+.pdfFrame {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  border: none;
+  background: var(--dsw-alias-bg-base);
+}

@@ -62,7 +62,7 @@ Everything that mutates or spawns is off by default. Override in the profile's `
 | `GET /plugins/workbench/api/search?root=&path=&q=` | Filename search under a directory, bounded by results/entries/time |
 | `GET /plugins/workbench/api/stat?root=&path=` | Type, size and version — cheap enough to poll while a preview is open |
 | `GET /plugins/workbench/api/read?root=&path=` | Text contents plus a freshness `version` (2 MiB cap, refuses binary and non-UTF-8) |
-| `GET /plugins/workbench/api/bytes?root=&path=` | Raw bytes with a MIME type, for images |
+| `GET /plugins/workbench/api/bytes?root=&path=[&download=1]` | Raw bytes with a MIME type, for images and PDFs; `download=1` sends it as an attachment instead of inline |
 | `PUT /plugins/workbench/api/write?root=&path=[&version=]` | Body is the new text; with `version` the write is conditional, and the reply carries the new version |
 | `POST /plugins/workbench/api/upload?root=&path=` | Body is raw bytes — no multipart parser in the loop |
 | `POST /plugins/workbench/api/mkdir?root=&path=` | Create a directory (recursive) |
@@ -104,6 +104,17 @@ The first shell's directory rides on the handshake URL (`…/pty?cwd=<dir>`); a 
 **The header launcher drives the surface through an event bridge.** The surface and the sidebar launcher are root-scoped and share one `workbenchStore`; the conversation-header launcher is *session*-scoped, and a store handle may mount at only one scope ("one handle, one scope"), so a session seat cannot bind the root store. It dispatches a window event (`dsh-workbench:toggle`) instead, and the always-mounted overlay — it renders `null` while closed but stays mounted — listens and calls the store action. The same bridge carries an `open-file` request (a preview target), which is wired end to end and tested but currently has no seat dispatching it: dsh's own produced-files signal is not loaded in every profile and, by design, only tracks structured file-edit tools (not files a `bash` step writes), so an artifact-link surface was left out rather than shipped half-covering.
 
 **The conversation's file links preview in the panel, not on the host.** dsh's own file links — the inline path mentions in a message, the produced-file chips under a turn, the paths on tool cards — all open through the *host* opener: the file opens on the machine dsh runs on, which is useless from a remote browser, and this is a web app. There is no supported way to re-point them (the providing service refuses a second registration — it fails plugin load, verified — and the buttons carry no stable data attribute, only compiled hash classes this plugin will not key on), so the workbench intercepts the clicks instead: a document-level capture listener, scoped to the conversation and details columns and recognizing a link purely by *content* — a button whose title or entire text is shaped like a file path. The path is resolved against the read roots and the session cwd and `stat`-ed; if it names a real file, the docked panel opens showing **only the preview** (no directory list), with Back to resume browsing. Clicking the same link again closes the preview and restores whatever the panel showed before. A path that resolves nowhere does nothing — the host opener is the behavior being replaced, never a fallback. Best-effort by design: the heuristic is content-based, so a future dsh could render links this misses.
+
+**Every file is reachable, even the ones nothing can render.** PDFs preview in
+the browser's own viewer (the bytes route already types them `application/pdf`;
+they skip the text read that used to earn them a `binary_file` dead end), and
+every preview — text, image, PDF, binary refusal alike — carries a Download
+that hits the same bytes route with `download=1`, i.e. `content-disposition:
+attachment`. Attachment is the safer disposition: an attachment is never
+rendered as a document, so the stored-XSS concern the other headers guard
+against cannot arise. The strict `default-src 'none'; … sandbox` policy stays on
+for PDFs — verified in Chrome that its viewer renders fine under it, so nothing
+was relaxed to make this work.
 
 **Docked without patching the layout.** The right-hand dock reserves a strip on the frame rather than floating over the chat. The overlay component marks the AppFrame (`data-workbench-docked`) and publishes the width as a `--wb-dock-width` custom property; a global stylesheet — keyed on that attribute and the layout's own structural contract, the conversation being the frame's **second grid child**, never a compiled CSS-Module hash class (those change every upstream build) — pushes the conversation column in by that width and pins the panel to the freed strip. The sidebar's own width is left alone, so it is a true split, not an overlay. Full-frame mode sets none of it, and the panel keeps its `inset: 0` and covers the frame as before. Same anchor and same discipline mobile-shell uses for its drawer.
 

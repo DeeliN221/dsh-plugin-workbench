@@ -98,9 +98,19 @@ export function searchFiles(root: string, path: string, q: string): Promise<{ hi
   return getJson<{ hits: SearchHit[]; truncated: boolean }>('/search', { root, path, q })
 }
 
-/** URL serving the raw bytes of a file (images, downloads). */
+/** URL serving the raw bytes of a file, for the renderers that embed it. */
 export function bytesUrl(root: string, path: string): string {
   return `${BASE}/bytes?${new URLSearchParams({ root, path }).toString()}`
+}
+
+/**
+ * URL that saves the file instead of rendering it.
+ *
+ * Same bytes, `content-disposition: attachment` — the escape hatch for
+ * everything no renderer can show, and the Download button for everything else.
+ */
+export function downloadUrl(root: string, path: string): string {
+  return `${BASE}/bytes?${new URLSearchParams({ root, path, download: '1' }).toString()}`
 }
 
 /** What the host will let this browser do. */

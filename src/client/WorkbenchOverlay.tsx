@@ -309,6 +309,7 @@ export function WorkbenchOverlay({ useStore, useSessions, actions, t }: Workbenc
               htmlViewRendered: t('htmlViewRendered'),
               htmlEnableScripts: t('htmlEnableScripts'),
               htmlDisableScripts: t('htmlDisableScripts'),
+              download: t('download'),
               errors: {
                 destination_exists: t('err_destination_exists'),
                 protected_file: t('err_protected_file'),

@@ -373,10 +373,17 @@ export function createApiHandler(ctx: Context, options: ApiOptions) {
         const target = await ctx.fs.resolve(absolutePath)
         const bytes = await ctx.fs.readBytes(target, undefined, MAX_BYTES)
         const body = Buffer.from(bytes)
+        // `download=1` asks for the file itself rather than a preview of it:
+        // the only difference is the disposition. Attachment is the safer of
+        // the two — the browser never renders an attachment as a document, so
+        // the stored-XSS concern the headers below guard against cannot arise
+        // at all. It is what the preview pane's Download button uses, and the
+        // only way to get at a file no renderer can show.
+        const asAttachment = url.searchParams.get('download') === '1'
         res.writeHead(200, {
           'content-type': MIME[extname(absolutePath).toLowerCase()] ?? 'application/octet-stream',
           'content-length': String(body.byteLength),
-          'content-disposition': `inline; filename*=UTF-8''${encodeURIComponent(basename(absolutePath))}`,
+          'content-disposition': `${asAttachment ? 'attachment' : 'inline'}; filename*=UTF-8''${encodeURIComponent(basename(absolutePath))}`,
           'cache-control': 'no-store',
           // This route hands workspace bytes back on the app's own origin, and
           // a workspace is full of files nobody here wrote — a cloned repo, a

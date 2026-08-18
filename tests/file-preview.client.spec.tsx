@@ -8,7 +8,7 @@ import { FilePreview, type FilePreviewProps } from '../src/client/FilePreview.ts
 const labels: FilePreviewProps['labels'] = {
   loading: 'Loading…', binary: 'Binary file', notUtf8: 'Not UTF-8', empty: 'Empty file',
   edit: 'Edit', save: 'Save', cancel: 'Cancel', saved: 'Saved', staleVersion: 'Save refused', changedOnDisk: 'Changed on disk', reload: 'Reload',
-  htmlViewSource: 'View source', htmlViewRendered: 'View rendered', htmlEnableScripts: 'Enable scripts', htmlDisableScripts: 'Disable scripts',
+  htmlViewSource: 'View source', htmlViewRendered: 'View rendered', htmlEnableScripts: 'Enable scripts', htmlDisableScripts: 'Disable scripts', download: 'Download',
 }
 
 /** Requests the pane made, so a test can assert the write went out. */
@@ -97,6 +97,46 @@ describe('rendering by kind', () => {
     readBody = { status: 200, payload: { path: 'e.txt', size: 0, content: '' } }
     show({ path: 'e.txt', name: 'e.txt' })
     await waitFor(() => { expect(screen.getByText('Empty file')).toBeDefined() })
+  })
+})
+
+describe('pdf and downloads', () => {
+  // A PDF used to dead-end here: previewKind said 'text', /read answered
+  // `binary_file`, and the pane showed "Binary file" with no way out.
+  it('renders a pdf in a frame off the bytes route, with no read call', async () => {
+    show({ path: 'book.pdf', name: 'book.pdf' })
+    const frame = await screen.findByTitle('book.pdf') as HTMLIFrameElement
+    expect(frame.tagName).toBe('IFRAME')
+    expect(frame.getAttribute('src')).toContain('/bytes?root=workspace&path=book.pdf')
+    expect(requests.some(r => r.url.includes('/read'))).toBe(false)
+  })
+
+  it('offers a download for a pdf', async () => {
+    show({ path: 'book.pdf', name: 'book.pdf' })
+    const link = await screen.findByText('Download') as HTMLAnchorElement
+    expect(link.getAttribute('href')).toContain('download=1')
+    expect(link.getAttribute('download')).toBe('book.pdf')
+  })
+
+  it('offers a download for a binary file instead of a dead end', async () => {
+    readBody = { status: 415, payload: { code: 'binary_file', error: 'not text' } }
+    show({ path: 'x.dat', name: 'x.dat' })
+    await waitFor(() => { expect(screen.getByText('Binary file')).toBeDefined() })
+    const link = screen.getByText('Download') as HTMLAnchorElement
+    expect(link.getAttribute('href')).toContain('path=x.dat')
+    expect(link.getAttribute('href')).toContain('download=1')
+  })
+
+  it('offers a download for an image too', async () => {
+    show({ path: 'pic.png', name: 'pic.png' })
+    await screen.findByAltText('pic.png')
+    expect((screen.getByText('Download') as HTMLAnchorElement).getAttribute('download')).toBe('pic.png')
+  })
+
+  it('offers a download for ordinary text', async () => {
+    show()
+    await waitFor(() => { expect(screen.getByText('hello')).toBeDefined() })
+    expect(screen.getByText('Download')).toBeDefined()
   })
 })
 

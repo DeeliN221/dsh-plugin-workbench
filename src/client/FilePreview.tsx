@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { MarkdownText, ReadBlock } from '@deepseek-ai/dsh-client-ui-primitives'
-import { bytesUrl, fetchStat, fetchText, writeText, WorkbenchApiError } from './api.ts'
+import { bytesUrl, downloadUrl, fetchStat, fetchText, writeText, WorkbenchApiError } from './api.ts'
 import { htmlSandbox, languageOf, previewKind } from './preview-kind.ts'
 import css from './FilePreview.module.css'
 
@@ -46,6 +46,8 @@ export interface FilePreviewProps {
     htmlEnableScripts: string
     /** Turn the opted-in scripts back off. */
     htmlDisableScripts: string
+    /** Save the file itself, for any kind — and the only option for those nothing can render. */
+    download: string
   }
 }
 
@@ -61,6 +63,21 @@ interface TextState {
 export function FilePreview({ root, path, name, writeEnabled, onSaved, labels }: FilePreviewProps) {
   const kind = previewKind(name)
   const isHtml = kind === 'html'
+  const isPdf = kind === 'pdf'
+
+  // Every kind gets this, including the ones with nothing to render: a file the
+  // pane cannot show is still a file the user may want off the machine.
+  const download = (
+    <a className={css.button} href={downloadUrl(root, path)} download={name}>{labels.download}</a>
+  )
+  // Image and PDF have no draft/save concepts, so they get the path and the
+  // download rather than the editor toolbar.
+  const plainBar = (
+    <div className={css.toolbar}>
+      <span className={css.path}>{path}</span>
+      {download}
+    </div>
+  )
   const [state, setState] = useState<TextState>({ status: 'loading', content: '', message: '', version: null })
   const [draft, setDraft] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -80,7 +97,9 @@ export function FilePreview({ root, path, name, writeEnabled, onSaved, labels }:
   }, [root, path])
 
   useEffect(() => {
-    if (kind === 'image') return
+    // Neither kind is text: both render straight from the bytes route, and a
+    // read would only buy a `binary_file` refusal (after streaming the file).
+    if (kind === 'image' || kind === 'pdf') return
     let cancelled = false
     setState({ status: 'loading', content: '', message: '', version: null })
     setDraft(null)
@@ -101,7 +120,7 @@ export function FilePreview({ root, path, name, writeEnabled, onSaved, labels }:
   // While the user is editing, the draft is never touched — the pane says the
   // file changed and the conditional save refuses to clobber it anyway.
   useEffect(() => {
-    if (kind === 'image' || state.status !== 'ready') return
+    if (kind === 'image' || kind === 'pdf' || state.status !== 'ready') return
     let cancelled = false
     const check = (): void => {
       if (document.visibilityState !== 'visible') return
@@ -127,14 +146,38 @@ export function FilePreview({ root, path, name, writeEnabled, onSaved, labels }:
 
   if (kind === 'image') {
     return (
-      <div className={css.imageWrap}>
-        <img className={css.image} src={bytesUrl(root, path)} alt={name} />
+      <div className={css.editor}>
+        {plainBar}
+        <div className={css.imageWrap}>
+          <img className={css.image} src={bytesUrl(root, path)} alt={name} />
+        </div>
+      </div>
+    )
+  }
+
+  // PDF goes straight to the browser's own viewer through the bytes route,
+  // which already serves it as application/pdf. Reading it as text only earns
+  // a `binary_file` refusal, which is what used to happen here.
+  if (isPdf) {
+    return (
+      <div className={css.editor}>
+        {plainBar}
+        <iframe className={css.pdfFrame} title={name} src={bytesUrl(root, path)} />
       </div>
     )
   }
 
   if (state.status === 'loading') return <div className={css.notice}>{labels.loading}</div>
-  if (state.status === 'error') return <div className={css.notice}>{state.message}</div>
+  // Binary, not UTF-8, too large: nothing to render, but the file is still
+  // reachable — offer it rather than leaving the pane a dead end.
+  if (state.status === 'error') {
+    return (
+      <div className={css.editor}>
+        {plainBar}
+        <div className={css.notice}>{state.message}</div>
+      </div>
+    )
+  }
 
   const save = (): void => {
     if (draft === null) return
@@ -198,6 +241,7 @@ export function FilePreview({ root, path, name, writeEnabled, onSaved, labels }:
           )}
         </>
       ) : null}
+      {draft === null ? download : null}
       {writeEnabled && draft === null
         ? <button type="button" className={css.button} onClick={() => { setDraft(state.content) }}>{labels.edit}</button>
         : null}
