@@ -150,6 +150,10 @@ describe('tabs', () => {
 })
 
 describe('docked versus full-frame', () => {
+  /** Scaffolding a test added to the document; cleaned up even if it failed. */
+  const strays: HTMLElement[] = []
+  afterEach(() => { for (const node of strays.splice(0)) node.remove() })
+
   it('is a complementary region beside the conversation, not a dialog', () => {
     // Docked, the panel sits next to a still-usable conversation, so a dialog
     // role (which implies the rest is inert) would misdescribe it.
@@ -186,6 +190,47 @@ describe('docked versus full-frame', () => {
   it('offers to dock when full-frame', () => {
     show(true, false)
     expect(screen.getByText('dockRight')).toBeDefined()
+  })
+
+  it('stops resizing when the pointer is released, even over an iframe', () => {
+    // The panel renders iframes (PDF/HTML previews). A drag crossing one used
+    // to deliver pointerup inside that frame, so the document listeners were
+    // never removed and the divider kept following the mouse with no button
+    // held. Pointer capture keeps the events on the handle; a buttons===0 move
+    // ends a drag whose release was lost regardless.
+    // The handler needs the frame (it measures its right edge), which it finds
+    // as the parent of the overlay layer. Registered for cleanup rather than
+    // removed at the end: a failed assertion would otherwise leave it in the
+    // document, and the next test's frameElement() would find this one.
+    const frame = document.createElement('div')
+    const layer = document.createElement('div')
+    layer.setAttribute('data-shell-overlay', 'true')
+    frame.append(layer)
+    document.body.append(frame)
+    strays.push(frame)
+
+    const { actions } = show(true, true)
+    const handle = screen.getByRole('separator')
+    handle.setPointerCapture = vi.fn()
+    handle.releasePointerCapture = vi.fn()
+    handle.hasPointerCapture = vi.fn(() => true)
+
+    fireEvent.pointerDown(handle, { pointerId: 1, clientX: 800, buttons: 1 })
+    expect(handle.setPointerCapture).toHaveBeenCalled()
+
+    // A move with no button held means the release was missed: it must settle,
+    // not keep tracking. Dispatched as a MouseEvent because jsdom implements no
+    // PointerEvent, so fireEvent.pointerMove carries neither `buttons` nor
+    // `pointerId` — MouseEvent has `buttons`, defaulting to 0, which is exactly
+    // the stale-drag case under test.
+    handle.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 700 }))
+    expect(actions.setDockWidth).toHaveBeenCalled()
+    expect(handle.releasePointerCapture).toHaveBeenCalled()
+
+    // And nothing tracks afterwards.
+    const callsAfterFinish = actions.setDockWidth.mock.calls.length
+    handle.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 500 }))
+    expect(actions.setDockWidth.mock.calls.length).toBe(callsAfterFinish)
   })
 
   it('resizes with the arrow keys on the separator', () => {
@@ -263,6 +308,29 @@ describe('intercepting conversation file links', () => {
     const { actions } = show(false)
     fireEvent.click(chatButton('report.html', '/ws/report.html'))
     await waitFor(() => { expect(actions.openLinkPreview).toHaveBeenCalled() })
+  })
+
+  it('opens a path dsh left as inert code, not just its own links', async () => {
+    // dsh only linkifies files it tracked; one a bash step wrote stays plain
+    // <code> — exactly the file with no other way to open it.
+    const { actions } = show(false)
+    const code = document.createElement('code')
+    code.textContent = '/ws/report.html'
+    center.append(code)
+    fireEvent.click(code)
+    await waitFor(() => { expect(actions.openLinkPreview).toHaveBeenCalled() })
+  })
+
+  it('leaves a click that finishes a text selection alone', async () => {
+    const { actions } = show(false)
+    const code = document.createElement('code')
+    code.textContent = '/ws/report.html'
+    center.append(code)
+    // Selecting text and releasing inside the token is not a request to open.
+    vi.spyOn(window, 'getSelection').mockReturnValue({ isCollapsed: false } as Selection)
+    fireEvent.click(code)
+    await new Promise(resolve => setTimeout(resolve, 20))
+    expect(actions.openLinkPreview).not.toHaveBeenCalled()
   })
 
   it('swallows the click so the host opener never fires', () => {

@@ -32,3 +32,12 @@
   width: var(--wb-dock-width, 460px);
   border-left: 1px solid var(--dsw-alias-border-l2);
 }
+
+/* A conversation path the panel can actually open, marked on hover once it has
+   been confirmed to exist. Only the affordance is added — no layout, no color
+   change — so it reads as "clickable" without restyling the transcript. */
+[data-wb-file] {
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}

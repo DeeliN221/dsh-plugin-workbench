@@ -84,21 +84,38 @@ export function WorkbenchOverlay({ useStore, useSessions, actions, t }: Workbenc
   // Drag the panel's left edge to resize. The width is written live to the frame
   // property (so both the reserved strip and the panel follow the pointer) and
   // committed to the store on release, where it is clamped and persists.
-  const onResizeStart = useCallback((event: React.PointerEvent) => {
+  const onResizeStart = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     event.preventDefault()
     const frame = frameElement()
     if (frame === null) return
+    const handle = event.currentTarget
+    const pointerId = event.pointerId
     const frameRight = frame.getBoundingClientRect().right
-    const onMove = (move: PointerEvent): void => {
+
+    // Pointer capture rather than document listeners. The panel renders
+    // iframes (the PDF and HTML previews), and a drag that crosses one
+    // delivers its pointerup INSIDE that frame — the parent document never
+    // hears it, the listeners are never removed, and the divider goes on
+    // following the mouse with no button held: the "sticky" resize. Capture
+    // routes every event for this pointer to the handle until it is released,
+    // and `buttons === 0` ends a drag whose release was lost anyway.
+    const stop = new AbortController()
+    const finish = (clientX: number): void => {
+      stop.abort()
+      if (handle.hasPointerCapture(pointerId)) handle.releasePointerCapture(pointerId)
+      actions.setDockWidth(frameRight - clientX)
+    }
+    const options = { signal: stop.signal }
+    handle.setPointerCapture(pointerId)
+    handle.addEventListener('pointermove', (move: PointerEvent) => {
+      if (move.pointerId !== pointerId) return
+      if (move.buttons === 0) { finish(move.clientX); return }
       frame.style.setProperty('--wb-dock-width', `${clampDockWidth(frameRight - move.clientX)}px`)
-    }
-    const onUp = (up: PointerEvent): void => {
-      document.removeEventListener('pointermove', onMove)
-      document.removeEventListener('pointerup', onUp)
-      actions.setDockWidth(frameRight - up.clientX)
-    }
-    document.addEventListener('pointermove', onMove)
-    document.addEventListener('pointerup', onUp)
+    }, options)
+    const end = (up: PointerEvent): void => { if (up.pointerId === pointerId) finish(up.clientX) }
+    handle.addEventListener('pointerup', end, options)
+    handle.addEventListener('pointercancel', end, options)
+    handle.addEventListener('lostpointercapture', end, options)
   }, [actions])
 
   // Keyboard resize for the same handle: left widens the dock, right narrows it.
@@ -137,14 +154,20 @@ export function WorkbenchOverlay({ useStore, useSessions, actions, t }: Workbenc
     const onClick = (event: MouseEvent): void => {
       const target = event.target
       if (!(target instanceof Element)) return
-      const button = target.closest('button')
-      if (button === null || button.closest('[data-workbench-panel]') !== null) return
+      // `button` is dsh's own file link; `code` is a path it did NOT recognize
+      // — a file written by a bash step, say — which it leaves as inert inline
+      // code. Those are exactly the ones with no other way to open them, so
+      // they count too.
+      const hit = target.closest('button, code')
+      if (hit === null || hit.closest('[data-workbench-panel]') !== null) return
+      // Clicking to finish a text selection is not asking to open anything.
+      if (window.getSelection()?.isCollapsed === false) return
       const frame = frameElement()
       if (frame === null) return
       const conversation = frame.children[1]
       const details = frame.children[2]
-      if (!(conversation?.contains(button) === true || details?.contains(button) === true)) return
-      const token = candidatePath(button.getAttribute('title') ?? '', button.textContent ?? '')
+      if (!(conversation?.contains(hit) === true || details?.contains(hit) === true)) return
+      const token = candidatePath(hit.getAttribute('title') ?? '', hit.textContent ?? '')
       if (token === null) return
       // Swallowed even if the resolve below misses: the host-opener default is
       // exactly the behavior being replaced, never a fallback.
@@ -154,8 +177,28 @@ export function WorkbenchOverlay({ useStore, useSessions, actions, t }: Workbenc
         if (file !== null) actions.openLinkPreview(file)
       })
     }
+    // A path that opens should look like it does. Marking happens on hover and
+    // only after the path resolves to a real file, so it never promises
+    // something a click cannot deliver; `resolvePreviewable` memoizes, so
+    // re-hovering the same token costs nothing.
+    const onHover = (event: MouseEvent): void => {
+      const target = event.target
+      if (!(target instanceof Element)) return
+      const hit = target.closest('button, code')
+      if (hit === null || hit.hasAttribute('data-wb-file') || hit.closest('[data-workbench-panel]') !== null) return
+      const token = candidatePath(hit.getAttribute('title') ?? '', hit.textContent ?? '')
+      if (token === null) return
+      void resolvePreviewable(token, cwdRef.current).then((file) => {
+        if (file !== null) hit.setAttribute('data-wb-file', '')
+      })
+    }
+
     document.addEventListener('click', onClick, true)
-    return () => { document.removeEventListener('click', onClick, true) }
+    document.addEventListener('mouseover', onHover)
+    return () => {
+      document.removeEventListener('click', onClick, true)
+      document.removeEventListener('mouseover', onHover)
+    }
   }, [actions])
 
   // Escape closes the surface, except from inside the terminal: there it is a

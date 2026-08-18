@@ -96,11 +96,15 @@ function parentOf(path: string): string {
 const REFRESH_INTERVAL_MS = 5000
 
 /**
- * Below this width the two panes will not both fit, so the browser switches
- * from side-by-side to a drill-in: the list, then a file fills the pane with a
- * Back button. Matches the docked panel's usual narrow width.
+ * Below this width the browser drills in (list, then the file full-width with a
+ * Back button) instead of splitting into two panes.
+ *
+ * The number is about the *preview* being usable, not about both panes merely
+ * fitting: the list alone wants ~300px, so a 560px split left the preview
+ * around 260px — technically two columns, practically unreadable. Side-by-side
+ * now has to earn itself roughly 400px of preview before it takes over.
  */
-const NARROW_BROWSER_PX = 560
+const NARROW_BROWSER_PX = 720
 
 /** A cheap fingerprint of a listing, so an unchanged poll changes nothing. */
 function signatureOf(entries: readonly ListEntry[]): string {
