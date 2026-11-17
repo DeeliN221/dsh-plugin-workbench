@@ -7,11 +7,13 @@
  * @module dsh-plugin-workbench/client
  */
 
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+// Type-only: pulls the renderer-owned `ctx.slots` service merge.
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { WorkbenchLauncher } from './WorkbenchLauncher.tsx'
 import { WorkbenchHeaderLauncher } from './WorkbenchHeaderLauncher.tsx'
 import { WorkbenchOverlay } from './WorkbenchOverlay.tsx'

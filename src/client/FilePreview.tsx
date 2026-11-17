@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { MarkdownText, ReadBlock } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { MarkdownLabels, ReadBlockLabels } from '@deepseek-ai/dsh-client-ui-primitives'
 import { bytesUrl, downloadUrl, fetchStat, fetchText, writeText, WorkbenchApiError } from './api.ts'
 import { htmlSandbox, languageOf, previewKind } from './preview-kind.ts'
 import css from './FilePreview.module.css'
@@ -48,6 +49,19 @@ export interface FilePreviewProps {
     htmlDisableScripts: string
     /** Save the file itself, for any kind — and the only option for those nothing can render. */
     download: string
+    /** Copy affordances for markdown code fences and read blocks. */
+    copy: string; copied: string
+    codeLabel: string; wrapLabel: string; unwrapLabel: string
+    /** Footnote list heading inside rendered markdown. */
+    footnotes: string
+    /** "Showing N of M lines" template with `{shown}` and `{total}`. */
+    readWindow: string
+    collapseLines: string
+    /** "Show the remaining N lines" template with `{n}`. */
+    expandLines: string
+    collapseAria: string
+    /** Expand aria-label template with `{n}`. */
+    expandAria: string
   }
 }
 
@@ -61,6 +75,34 @@ interface TextState {
 
 /** Render one file, choosing the renderer from its extension. */
 export function FilePreview({ root, path, name, writeEnabled, onSaved, labels }: FilePreviewProps) {
+  // The 0.2.2-rc.1 primitives take their chrome as props (they are cordis-free),
+  // so the plugin's own dictionary supplies it: templates stay strings in the
+  // locale file and are closed over here.
+  const fill = (template: string, values: Record<string, number>): string =>
+    Object.entries(values).reduce(
+      (text, [key, value]) => text.replaceAll(`{${key}}`, String(value)),
+      template,
+    )
+  const markdownLabels: MarkdownLabels = {
+    code: {
+      copyLabel: labels.copy,
+      copiedLabel: labels.copied,
+      toolbarLabels: { codeLabel: labels.codeLabel, wrapLabel: labels.wrapLabel, unwrapLabel: labels.unwrapLabel },
+    },
+    footnotes: labels.footnotes,
+  }
+  const readBlockLabels: ReadBlockLabels = {
+    codeLabel: labels.codeLabel,
+    wrapLabel: labels.wrapLabel,
+    unwrapLabel: labels.unwrapLabel,
+    window: (shown, total) => fill(labels.readWindow, { shown, total }),
+    copy: labels.copy,
+    copied: labels.copied,
+    collapseAria: labels.collapseAria,
+    expandAria: hidden => fill(labels.expandAria, { n: hidden }),
+    collapse: labels.collapseLines,
+    expand: hidden => fill(labels.expandLines, { n: hidden }),
+  }
   const kind = previewKind(name)
   const isHtml = kind === 'html'
   const isPdf = kind === 'pdf'
@@ -308,7 +350,7 @@ export function FilePreview({ root, path, name, writeEnabled, onSaved, labels }:
     return (
       <div className={css.editor}>
         {toolbar}
-        <div className={css.markdown}><MarkdownText text={state.content} /></div>
+        <div className={css.markdown}><MarkdownText text={state.content} labels={markdownLabels} /></div>
       </div>
     )
   }
@@ -324,6 +366,7 @@ export function FilePreview({ root, path, name, writeEnabled, onSaved, labels }:
         totalLines={allLines.length}
         lang={languageOf(name)}
         maxLines={MAX_PREVIEW_LINES}
+        labels={readBlockLabels}
         className={css.read}
       />
     </div>

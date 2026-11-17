@@ -18,6 +18,9 @@ const labels: FileBrowserLabels = {
   searchPlaceholder: 'Search filenames', noMatches: 'No matching files.',
   searchTruncated: 'Search stopped early', brokenLink: 'broken link', replaced: 'Replaced', uploadFailed: 'Failed', staleVersion: 'Changed on disk', changedOnDisk: 'Changed on disk', reload: 'Reload',
   htmlViewSource: 'View source', htmlViewRendered: 'View rendered', htmlEnableScripts: 'Enable scripts', htmlDisableScripts: 'Disable scripts', download: 'Download',
+  copy: 'Copy', copied: 'Copied', codeLabel: 'Code', wrapLabel: 'Wrap', unwrapLabel: 'No wrap', footnotes: 'Footnotes',
+  readWindow: 'Showing {shown} of {total} lines', collapseLines: 'Collapse', expandLines: 'Show the remaining {n} lines',
+  collapseAria: 'Collapse the long file', expandAria: 'Show the remaining {n} lines',
   errors: {
     destination_exists: 'Already there', protected_file: 'Protected file', protected_path: 'Protected directory',
     sandbox_read_only: 'Read-only sandbox', write_disabled: 'Writing is off', outside_writable_root: 'Not writable here',

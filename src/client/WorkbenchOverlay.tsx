@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PropsLocale, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
-// Brings the runtime's GlobalStandardProps (useSessions) into PropsRuntime for a
+// Brings ui-session's GlobalStandardProps (useSessions) into PropsRuntime for a
 // root-scoped slot; type-only, so it adds nothing to the bundle.
-import type {} from '@deepseek-ai/dsh-client-runtime/client'
+import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type { workbenchStore } from './store.ts'
 import { clampDockWidth } from './dock-width.ts'
 import { onWorkbenchRequests } from './workbench-events.ts'
@@ -353,6 +353,17 @@ export function WorkbenchOverlay({ useStore, useSessions, actions, t }: Workbenc
               htmlEnableScripts: t('htmlEnableScripts'),
               htmlDisableScripts: t('htmlDisableScripts'),
               download: t('download'),
+              copy: t('copy'),
+              copied: t('copied'),
+              codeLabel: t('codeLabel'),
+              wrapLabel: t('wrapLabel'),
+              unwrapLabel: t('unwrapLabel'),
+              footnotes: t('footnotes'),
+              readWindow: t('readWindow'),
+              collapseLines: t('collapseLines'),
+              expandLines: t('expandLines'),
+              collapseAria: t('collapseAria'),
+              expandAria: t('expandAria'),
               errors: {
                 destination_exists: t('err_destination_exists'),
                 protected_file: t('err_protected_file'),

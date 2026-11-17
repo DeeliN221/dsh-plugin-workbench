@@ -9,6 +9,9 @@ const labels: FilePreviewProps['labels'] = {
   loading: 'Loading…', binary: 'Binary file', notUtf8: 'Not UTF-8', empty: 'Empty file',
   edit: 'Edit', save: 'Save', cancel: 'Cancel', saved: 'Saved', staleVersion: 'Save refused', changedOnDisk: 'Changed on disk', reload: 'Reload',
   htmlViewSource: 'View source', htmlViewRendered: 'View rendered', htmlEnableScripts: 'Enable scripts', htmlDisableScripts: 'Disable scripts', download: 'Download',
+  copy: 'Copy', copied: 'Copied', codeLabel: 'Code', wrapLabel: 'Wrap', unwrapLabel: 'No wrap', footnotes: 'Footnotes',
+  readWindow: 'Showing {shown} of {total} lines', collapseLines: 'Collapse', expandLines: 'Show the remaining {n} lines',
+  collapseAria: 'Collapse the long file', expandAria: 'Show the remaining {n} lines',
 }
 
 /** Requests the pane made, so a test can assert the write went out. */
@@ -187,10 +190,13 @@ describe('html preview', () => {
   it('can show the source, and back to the rendered frame', async () => {
     await showHtml()
     fireEvent.click(screen.getByText('View source'))
-    // The read block shows the markup as text now, no iframe.
-    await waitFor(() => { expect(screen.queryByTitle('page.html')).toBeNull() })
+    // The read block shows the markup as text now, no iframe. Assert on the
+    // frame element itself: 0.2.2-rc.1's ReadBlock stamps `title` with its
+    // label, so a title lookup would match the source view too.
+    const frame = (): HTMLIFrameElement | null => document.querySelector('iframe')
+    await waitFor(() => { expect(frame()).toBeNull() })
     fireEvent.click(screen.getByText('View rendered'))
-    await waitFor(() => { expect(screen.getByTitle('page.html')).toBeDefined() })
+    await waitFor(() => { expect(frame()).not.toBeNull() })
   })
 
   it('resets scripts back off when the file changes', async () => {

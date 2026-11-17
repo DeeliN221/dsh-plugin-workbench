@@ -43,6 +43,18 @@ export interface FileBrowserLabels extends FileActionLabels {
   htmlDisableScripts: string
   /** Save the file itself; the only option for kinds nothing can render. */
   download: string
+  /** Copy affordances for markdown code fences and read blocks. */
+  copy: string
+  copied: string
+  codeLabel: string
+  wrapLabel: string
+  unwrapLabel: string
+  footnotes: string
+  readWindow: string
+  collapseLines: string
+  expandLines: string
+  collapseAria: string
+  expandAria: string
   /** Localized copy for host error codes. */
   errors: ErrorCopy
   /** Shown when the search walk stopped at a limit rather than finishing. */
@@ -543,6 +555,17 @@ export function FileBrowser({ labels, sessionCwd, openTarget, onTargetConsumed, 
                 htmlEnableScripts: labels.htmlEnableScripts,
                 htmlDisableScripts: labels.htmlDisableScripts,
                 download: labels.download,
+                copy: labels.copy,
+                copied: labels.copied,
+                codeLabel: labels.codeLabel,
+                wrapLabel: labels.wrapLabel,
+                unwrapLabel: labels.unwrapLabel,
+                footnotes: labels.footnotes,
+                readWindow: labels.readWindow,
+                collapseLines: labels.collapseLines,
+                expandLines: labels.expandLines,
+                collapseAria: labels.collapseAria,
+                expandAria: labels.expandAria,
               }}
             />
           )}

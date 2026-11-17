@@ -27,7 +27,9 @@ import type { UserConfig } from 'tsdown'
 /**
  * Module specifiers the dsh web shell shares into its frozen module table.
  * Mirrors `PLATFORM_MODULES` in `@deepseek-ai/dsh-client-web/src/platform.ts`
- * plus the documented runtime store exemption. Keep in sync when dsh bumps.
+ * for the 0.2.2-rc.1 platform. Keep in sync when dsh bumps: a specifier that
+ * lands here but is not a seed word (or a materialized module / registered
+ * factory) throws at boot, so this list is deliberately exact.
  */
 export const CLIENT_EXTERNALS: readonly string[] = [
   'react',
@@ -35,12 +37,12 @@ export const CLIENT_EXTERNALS: readonly string[] = [
   'react-dom',
   'react-dom/client',
   '@deepseek-ai/cordis',
+  'zod',
+  '@tanstack/react-virtual',
+  '@deepseek-ai/dsh-client-store',
   '@deepseek-ai/dsh-client-ui-slots',
-  '@deepseek-ai/dsh-client-web-react',
   '@deepseek-ai/dsh-client-ui-primitives',
-  '@deepseek-ai/dsh-client-ui-attachment',
-  '@deepseek-ai/dsh-client-schema-form',
-  '@deepseek-ai/dsh-client-runtime/client',
+  '@deepseek-ai/dsh-client-ui-dockkit',
 ]
 
 const CSS_VIRTUAL_PREFIX = '\0dsh-css:'

@@ -1,6 +1,6 @@
 /** Shared open/closed state for the workbench surface. */
 
-import { defineStore } from '@deepseek-ai/dsh-client-runtime/client'
+import { defineStore } from '@deepseek-ai/dsh-client-store'
 import { clampDockWidth, DEFAULT_DOCK_WIDTH } from './dock-width.ts'
 import { linkClick } from './link-preview.ts'
 

@@ -2,13 +2,21 @@
 
 A file browser, file preview, and browser terminal for the [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) web UI, as an out-of-tree plugin.
 
+> **Maintained fork.** This repository is [DeeliN221/dsh-plugin-workbench](https://github.com/DeeliN221/dsh-plugin-workbench),
+> tracking [upstream `ghbhiee/dsh-plugin-workbench`](https://github.com/ghbhiee/dsh-plugin-workbench) as `upstream`.
+> Upstream 0.3.0 is built against the 0.1.0-rc.6 client line: its browser half
+> `require`s `@deepseek-ai/dsh-client-runtime/client`, which the 0.2.2-rc.1 shell
+> answers with nothing ("missed the module table"), so the whole client entry
+> fails to activate. 0.4.0 is the port to 0.2.2-rc.1 — see
+> [docs/PORT-0.2.2-rc.1.md](docs/PORT-0.2.2-rc.1.md).
+
 ## Install
 
 Not on npm yet. The built `lib/` is committed, so it installs straight from
 GitHub — no download, no build step:
 
 ```sh
-dsh plugin --profile web add github:ghbhiee/dsh-plugin-workbench
+dsh plugin --profile web add github:DeeliN221/dsh-plugin-workbench
 ```
 
 Or from a local clone (a `link:`, so a local rebuild is picked up):

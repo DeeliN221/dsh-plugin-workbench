@@ -172,7 +172,7 @@ function newId(): string {
  * @returns argv to spawn (confined when the mode requires it) and the policy's
  * workspace root, which is both the fence anchor and the fallback cwd.
  */
-function confinedArgv(ctx: Context, shell: string): { argv: string[]; mode: string; workspaceRoot: string } {
+async function confinedArgv(ctx: Context, shell: string): Promise<{ argv: string[]; mode: string; workspaceRoot: string }> {
   const policy = ctx.sandboxPolicy.resolve()
   const argv = [shell]
   if (policy.mode === 'danger-full-access') return { argv, mode: policy.mode, workspaceRoot: policy.workspaceRoot }
@@ -181,7 +181,7 @@ function confinedArgv(ctx: Context, shell: string): { argv: string[]; mode: stri
     throw new Error(`workbench: sandbox mode "${policy.mode}" needs a ctx.sandbox provider to open a terminal`)
   }
   return {
-    argv: [...sandbox.confine(argv, { ...policy, mode: policy.mode }).argv],
+    argv: [...(await sandbox.confine(argv, { ...policy, mode: policy.mode })).argv],
     mode: policy.mode,
     workspaceRoot: policy.workspaceRoot,
   }
@@ -221,7 +221,7 @@ export function createPtyGateway(ctx: Context, options: PtyOptions): {
 
   async function spawnSession(requestedCwd?: string): Promise<PtySession> {
     const shell = detectShell(options.shell)
-    const { argv, workspaceRoot } = confinedArgv(ctx, shell)
+    const { argv, workspaceRoot } = await confinedArgv(ctx, shell)
     const [file, ...args] = argv
     if (file === undefined) throw new Error('workbench: empty shell argv')
     const cwd = await resolveSpawnCwd(requestedCwd, workspaceRoot)
