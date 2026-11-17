@@ -31,6 +31,15 @@ export interface Config {
   writeEnabled: boolean
   /** Allow spawning PTY sessions from the browser. */
   ptyEnabled: boolean
+  /**
+   * Spawn browser shells without asking the sandbox service to confine them.
+   *
+   * For deployments whose isolation is the container/VM itself, where the
+   * sandbox policy cannot be enforced and every spawn would otherwise fail with
+   * "no sandbox backend is usable on this host". The terminal's cwd is still
+   * fenced to the workspace root and read roots.
+   */
+  ptyUnconfined: boolean
   /** Refuse requests that did not arrive over the loopback interface. */
   loopbackOnly: boolean
   /** Cap on entries returned by one directory listing. */
@@ -44,6 +53,7 @@ export const Config: z<Config> = z.object({
   readRoots: z.array(z.string()).default([]),
   writeEnabled: z.boolean().default(false),
   ptyEnabled: z.boolean().default(false),
+  ptyUnconfined: z.boolean().default(false),
   loopbackOnly: z.boolean().default(true),
   maxListEntries: z.number().default(1000),
   shell: z.string().default(''),
@@ -77,6 +87,7 @@ export function apply(ctx: Context, config: Config): void {
       loopbackOnly: config.loopbackOnly,
       shell: config.shell,
       readRoots: config.readRoots,
+      unconfined: config.ptyUnconfined,
     })
     const removeRoute = ctx.webServer.registerUpgrade({
       path: '/plugins/workbench/pty',

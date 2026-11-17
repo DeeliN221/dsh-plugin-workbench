@@ -83,7 +83,7 @@ async function connect(target: string = url): Promise<Client> {
 }
 
 beforeAll(async () => {
-  const gateway = createPtyGateway(fakeCtx(), { loopbackOnly: true, shell: '/bin/bash', readRoots: [] })
+  const gateway = createPtyGateway(fakeCtx(), { loopbackOnly: true, shell: '/bin/bash', readRoots: [], unconfined: false })
   dispose = gateway.dispose
   server = createServer()
   server.on('upgrade', (req, socket, head) => { gateway.handler(req, socket, head) })
@@ -201,7 +201,7 @@ describe('opening in a directory', () => {
   beforeAll(async () => {
     fenceRoot = await realpath(await mkdtemp(join(tmpdir(), 'wb-pty-cwd-')))
     await mkdir(join(fenceRoot, 'project'), { recursive: true })
-    const gateway = createPtyGateway(fakeCtx(), { loopbackOnly: true, shell: '/bin/bash', readRoots: [fenceRoot] })
+    const gateway = createPtyGateway(fakeCtx(), { loopbackOnly: true, shell: '/bin/bash', readRoots: [fenceRoot], unconfined: false })
     cwdDispose = gateway.dispose
     cwdServer = createServer()
     cwdServer.on('upgrade', (req, socket, head) => { gateway.handler(req, socket, head) })
@@ -293,7 +293,7 @@ describe('origin gate', () => {
 describe('teardown', () => {
   /** A gateway of its own, so disposing it cannot disturb the shared suite. */
   async function ownGateway() {
-    const gateway = createPtyGateway(fakeCtx(), { loopbackOnly: true, shell: '/bin/bash', readRoots: [] })
+    const gateway = createPtyGateway(fakeCtx(), { loopbackOnly: true, shell: '/bin/bash', readRoots: [], unconfined: false })
     const httpServer = createServer()
     httpServer.on('upgrade', (req, socket, head) => { gateway.handler(req, socket, head) })
     await new Promise<void>(resolve => httpServer.listen(0, '127.0.0.1', resolve))
@@ -339,5 +339,66 @@ describe('teardown', () => {
       await new Promise(resolve => setTimeout(resolve, 50))
     }
     throw new Error(`pty ${String(pid)} survived the gateway`)
+  })
+})
+describe('sandbox fallback', () => {
+  /**
+   * A deployment whose policy cannot be enforced: the mode asks for a fence, but
+   * no sandbox provider is mounted. Real hosts hit this by having a provider
+   * whose backend is missing (no user namespaces, no landlock).
+   */
+  const unenforceableCtx = (): Context => ({
+    baseUrl: import.meta.url,
+    sandboxPolicy: { resolve: () => ({ mode: 'workspace-write', workspaceRoot: process.cwd() }) },
+    get: () => undefined,
+  }) as unknown as Context
+
+  /** Serve one gateway of our own and hand back its address. */
+  async function serve(unconfined: boolean) {
+    const gateway = createPtyGateway(unenforceableCtx(), { loopbackOnly: true, shell: '/bin/bash', readRoots: [], unconfined })
+    const httpServer = createServer()
+    httpServer.on('upgrade', (req, socket, head) => { gateway.handler(req, socket, head) })
+    await new Promise<void>(resolve => httpServer.listen(0, '127.0.0.1', resolve))
+    const address = httpServer.address()
+    if (address === null || typeof address === 'string') throw new Error('no port')
+    return {
+      url: `ws://127.0.0.1:${String(address.port)}/plugins/workbench/pty`,
+      close: async () => {
+        gateway.dispose()
+        await new Promise<void>(resolve => httpServer.close(() => { resolve() }))
+      },
+    }
+  }
+
+  /** Collect the first control frame of either kind. */
+  async function firstControl(url: string): Promise<Record<string, unknown>> {
+    const socket = new WebSocket(url)
+    const frame = await new Promise<Record<string, unknown>>((resolve, reject) => {
+      socket.on('message', (raw: Buffer) => {
+        const text = raw.toString('utf8')
+        if (!text.startsWith('{')) return
+        resolve(JSON.parse(text) as Record<string, unknown>)
+      })
+      socket.once('error', reject)
+    })
+    socket.close()
+    return frame
+  }
+
+  it('refuses to spawn when the fence cannot be built, naming the reason', async () => {
+    const served = await serve(false)
+    try {
+      const frame = await firstControl(served.url)
+      expect(frame.type).toBe('error')
+      expect(String(frame.message)).toMatch(/needs a ctx\.sandbox provider/)
+    } finally { await served.close() }
+  })
+
+  it('spawns unconfined when the deployment says it is the isolation boundary', async () => {
+    const served = await serve(true)
+    try {
+      const frame = await firstControl(served.url)
+      expect(frame).toMatchObject({ type: 'created', shell: 'bash' })
+    } finally { await served.close() }
   })
 })

@@ -80,6 +80,15 @@ export interface PtyOptions {
   /** Extra absolute read roots — the same fence the file API uses, so a shell can
    * open in the session's cwd but never outside an allowed root. */
   readRoots: string[]
+  /**
+   * Spawn the shell without asking the sandbox service to confine it.
+   *
+   * Only correct where the deployment itself is the isolation boundary (a
+   * container or VM) and its sandbox policy cannot be enforced — a host with no
+   * usable backend otherwise fails every spawn with "no sandbox backend is
+   * usable on this host". The read-root fence on the cwd still applies.
+   */
+  unconfined: boolean
 }
 
 const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1'])
@@ -169,13 +178,24 @@ function newId(): string {
  * full access — the same rule `terminal-bash` applies to agent PTYs.
  * @param ctx - plugin context.
  * @param shell - shell executable.
+ * @param unconfined - spawn without the sandbox service (see {@link PtyOptions.unconfined}).
  * @returns argv to spawn (confined when the mode requires it) and the policy's
  * workspace root, which is both the fence anchor and the fallback cwd.
  */
-async function confinedArgv(ctx: Context, shell: string): Promise<{ argv: string[]; mode: string; workspaceRoot: string }> {
+async function confinedArgv(
+  ctx: Context,
+  shell: string,
+  unconfined: boolean,
+): Promise<{ argv: string[]; mode: string; workspaceRoot: string }> {
   const policy = ctx.sandboxPolicy.resolve()
   const argv = [shell]
-  if (policy.mode === 'danger-full-access') return { argv, mode: policy.mode, workspaceRoot: policy.workspaceRoot }
+  // A deployment that isolates at the container level opts out explicitly: there
+  // the policy's mode describes intent the host cannot enforce, and refusing
+  // every spawn is not a safer answer than running the shell the operator asked
+  // for. The cwd fence below is what keeps the terminal inside the workspace.
+  if (unconfined || policy.mode === 'danger-full-access') {
+    return { argv, mode: policy.mode, workspaceRoot: policy.workspaceRoot }
+  }
   const sandbox = ctx.get('sandbox')
   if (sandbox === undefined) {
     throw new Error(`workbench: sandbox mode "${policy.mode}" needs a ctx.sandbox provider to open a terminal`)
@@ -221,7 +241,7 @@ export function createPtyGateway(ctx: Context, options: PtyOptions): {
 
   async function spawnSession(requestedCwd?: string): Promise<PtySession> {
     const shell = detectShell(options.shell)
-    const { argv, workspaceRoot } = await confinedArgv(ctx, shell)
+    const { argv, workspaceRoot } = await confinedArgv(ctx, shell, options.unconfined)
     const [file, ...args] = argv
     if (file === undefined) throw new Error('workbench: empty shell argv')
     const cwd = await resolveSpawnCwd(requestedCwd, workspaceRoot)

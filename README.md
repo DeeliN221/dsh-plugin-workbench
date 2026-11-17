@@ -57,6 +57,7 @@ Everything that mutates or spawns is off by default. Override in the profile's `
 | `readRoots` | `[]` | Extra absolute directories the browser may read, beyond the session workspace root. Checked at load: a relative path or a missing directory fails the plugin with both problems named, rather than becoming a broken entry in the picker |
 | `writeEnabled` | `false` | Allow write/upload/mkdir/rename/delete, and show the editing UI |
 | `ptyEnabled` | `false` | Allow the browser to spawn shells |
+| `ptyUnconfined` | `false` | Spawn the browser shell without the OS sandbox. For deployments whose isolation boundary is the container/VM itself and whose host has no usable sandbox backend — otherwise every spawn fails with `no sandbox backend is usable on this host`. The terminal's cwd stays fenced to the workspace root and read roots |
 | `loopbackOnly` | `true` | Refuse callers that did not arrive over loopback |
 | `maxListEntries` | `1000` | Cap on entries per directory listing |
 | `shell` | `''` | Shell to spawn; empty detects `$SHELL` → zsh → bash (PowerShell on Windows) |
@@ -133,6 +134,13 @@ was relaxed to make this work.
 **Search is a bounded walk, not ripgrep.** The harness vendors rg inside `tool-fs-search`, but that is an internal dependency resolved from its own tree, and matching filenames does not need it. The walk is breadth-first so a truncated search still returns the shallow matches a person meant, skips `.git` / `node_modules` and friends, never descends a symlinked directory (cycle guard and fence in one), and stops at 200 hits, 20 000 entries, or two seconds — whichever comes first, saying so when it does.
 
 **Reads need their own fence.** The harness's `fs-sandbox` guards writes only — reads pass straight through to the local filesystem. Every path here is resolved twice: a lexical traversal reject, then a `realpath` containment check, so a symlink inside a root cannot point out of it.
+
+**`ptyUnconfined` moves the trust boundary to the deployment.** With it on, the
+shell is spawned directly: no seatbelt, no landlock, no namespace. That is the
+right trade only where the process is already contained (a container or VM) and
+the policy's mode describes intent the host cannot enforce — a refusal there
+breaks the feature without adding protection. Leave it off wherever the host can
+actually confine.
 
 **A loopback check is not an origin check, and the terminal is a shell.** A WebSocket handshake and a cross-site `fetch` are not stopped by the same-origin policy, and both come from the user's own browser — so `loopbackOnly` sees loopback and waves them through. A page the user merely visits could therefore open the PTY and run commands (`ws://127.0.0.1:…/plugins/workbench/pty`), or, with writes on, POST a file into the workspace. This was confirmed end to end: a page on a different port reached `created` and executed `id`. Both the upgrade and the mutating HTTP verbs now check `Origin` — a browser always sends it, a same-origin one matches `Host`, and a request without one is not a browser and passes. Cross-origin handshakes are refused before a shell is spawned; cross-origin writes answer `403 cross_origin`.
 
